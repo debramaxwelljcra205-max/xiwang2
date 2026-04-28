@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>星火 · 希望 - 历史的沉浮</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/AfterimageShader.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/AfterimagePass.js"></script>
+
+
+
+    <style>
+
+        body { margin: 0; background: #000; color: white; overflow: hidden; font-family: "Microsoft YaHei", sans-serif; touch-action: none; }
+
+        #webgl-container { position: absolute; width: 100vw; height: 100vh; top:0; left:0;}
+
+        
+
+        #ui-layer {
+
+            position: absolute; bottom: 8%; width: 100%; text-align: center;
+
+            z-index: 10; pointer-events: none;
+
+        }
+
+        #state-display {
+
+            font-size: 26px; font-weight: bold; letter-spacing: 3px;
+
+            color: rgba(255, 255, 255, 0.95); text-shadow: 0 0 15px rgba(255, 204, 0, 0.8);
+
+            margin-bottom: 12px; opacity: 0; transition: opacity 2s;
+
+        }
+
+        #description-display {
+
+            font-size: 15px; max-width: 75%; margin: 0 auto; line-height: 1.6;
+
+            color: rgba(255, 255, 255, 0.85); opacity: 0; transition: opacity 2.5s; text-shadow: 0 0 5px rgba(0,0,0,0.8);
+
+        }
+
+
+
+        #start-overlay {
+
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+
+            background: #000; z-index: 100; display: flex; flex-direction: column;
+
+            justify-content: center; align-items: center; cursor: pointer; transition: opacity 1.5s;
+
+        }
+
+        .touch-hint {
+
+            font-size: 18px; letter-spacing: 5px; color: #ffcc00;
+
+            animation: pulse 2s infinite; margin-top: 20px;
+
+        }
+
+        @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
+
+
+
+        /* --- 星星收集管 (默认 PC 端样式) --- */
+
+        #star-repository {
+
+            position: fixed; top: 10%; right: 15px; bottom: 10%; width: 180px;
+
+            background: linear-gradient(to bottom, rgba(255, 204, 0, 0.03), rgba(40, 30, 0, 0.5), rgba(255, 204, 0, 0.03));
+
+            backdrop-filter: blur(8px);
+
+            border-left: 1px solid rgba(255, 204, 0, 0.3); border-right: 1px solid rgba(255, 204, 0, 0.3);
+
+            border-radius: 20px; z-index: 80; display: flex; flex-direction: column;
+
+            padding: 15px 10px; box-sizing: border-box;
+
+            box-shadow: 0 0 25px rgba(255, 204, 0, 0.1), inset 0 0 20px rgba(255, 204, 0, 0.2);
+
+            pointer-events: auto; opacity: 0; transition: opacity 2s ease;
+
+        }
+
+        #star-repository.visible { opacity: 1; }
+
+        #repo-header {
+
+            font-size: 14px; color: rgba(255, 204, 0, 0.9); font-weight: bold; letter-spacing: 2px;
+
+            text-align: center; border-bottom: 1px solid rgba(255, 204, 0, 0.3);
+
+            padding-bottom: 10px; margin-bottom: 10px;
+
+        }
+
+        #star-count { font-size: 26px; color: #fff; display: block; margin-top: 5px; text-shadow: 0 0 10px #ffcc00;}
+
+        #collection-log {
+
+            flex-grow: 1; overflow-y: auto; color: rgba(255,255,255,0.7); font-size: 12px; line-height: 1.6;
+
+            letter-spacing: 1px; padding-right: 5px;
+
+        }
+
+        #collection-log::-webkit-scrollbar { width: 2px; }
+
+        #collection-log::-webkit-scrollbar-thumb { background: rgba(255, 204, 0, 0.4); border-radius: 2px; }
+
+        .log-entry { margin-bottom: 10px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 5px;}
+
+        .log-time { font-size: 10px; color: rgba(255, 204, 0, 0.6); display: block; margin-top: 2px;}
+
+        .spark-icon { color: #ffcc00; margin-right: 4px; text-shadow: 0 0 5px #ffcc00;}
+
+
+
+        /* --- 语录弹出框 (默认 PC 端样式) --- */
+
+        #quote-popup {
+
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
+
+            width: 85%; max-width: 450px;
+
+            background: linear-gradient(135deg, rgba(30, 20, 0, 0.6), rgba(0, 0, 0, 0.8));
+
+            backdrop-filter: blur(10px); border: 1px solid rgba(255, 204, 0, 0.4); 
+
+            box-shadow: 0 0 50px rgba(255, 204, 0, 0.2), inset 0 0 20px rgba(255, 204, 0, 0.15);
+
+            color: rgba(255, 215, 0, 0.95); font-size: 18px; line-height: 1.8; text-align: center;
+
+            letter-spacing: 3px; padding: 30px 20px; box-sizing: border-box;
+
+            border-radius: 12px; z-index: 95; opacity: 0; pointer-events: none;
+
+            transition: opacity 1s ease, transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.6);
+
+        }
+
+        #quote-popup.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+
+
+        /* ================= 移动端专项适配 (核心改动) ================= */
+
+        @media (max-width: 768px) {
+
+            /* 1. 缩小右侧储存库，改到右上角，不占满全屏 */
+
+            #star-repository {
+
+                top: 20px; right: 10px; bottom: auto;
+
+                width: 120px; max-height: 40vh; /* 最多占屏幕高度40% */
+
+                padding: 10px 5px;
+
+                border-radius: 12px;
+
+            }
+
+            #repo-header { font-size: 12px; padding-bottom: 5px; margin-bottom: 5px; }
+
+            #star-count { font-size: 18px; margin-top: 2px; }
+
+            #collection-log { font-size: 10px; line-height: 1.4; }
+
+            .log-entry { margin-bottom: 6px; padding-bottom: 3px; }
+
+            
+
+            /* 2. 缩小中央弹窗字号，确保长句子不溢出 */
+
+            #quote-popup {
+
+                width: 90%;
+
+                font-size: 14px;
+
+                padding: 20px 15px;
+
+                letter-spacing: 2px;
+
+            }
+
+
+
+            /* 3. 缩小底部标题和描述文字 */
+
+            #state-display { font-size: 18px; margin-bottom: 8px; }
+
+            #description-display { font-size: 12px; width: 90%; }
+
+            #ui-layer { bottom: 5%; }
+
+
+
+            /* 4. 缩小开始界面的字号 */
+
+            #start-overlay h1 { font-size: 24px !important; }
+
+            .touch-hint { font-size: 14px; }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <div id="quote-popup">
+
+        <div id="quote-text"></div>
+
+    </div>
+
+
+
+    <div id="star-repository">
+
+        <div id="repo-header">希望火种<span id="star-count">0</span></div>
+
+        <div id="collection-log"></div>
+
+    </div>
+
+
+
+    <div id="start-overlay" onclick="launch()">
+
+        <h1 style="font-size: 32px; letter-spacing: 10px; text-shadow: 0 0 25px #ffcc00;">希 望</h1>
+
+        <div class="touch-hint">— 点击/触控收集历史星火 —</div>
+
+    </div>
+
+
+
+    <div id="ui-layer">
+
+        <div id="state-display">门开黎明，希望新生 —— 希望（1912.01.01）</div>
+
+        <div id="description-display">起义门巍然矗立，迎向破晓晨光。城门开启，即是黎明到来，黑暗终被冲破，希望的火种在此传承生长。</div>
+
+    </div>
+
+    <div id="webgl-container"></div>
+
+
+
+<script>
+
+    const REVOLUTIONARY_QUOTES = [
+
+        "星星之火，可以燎原。",
+
+        "雄关漫道真如铁，而今迈步从头越。",
+
+        "红军不怕远征难，万水千山只等闲。",
+
+        "为有牺牲多壮志，敢教日月换新天。",
+
+        "青年之字典，无“困难”之字；青年之口头，无“障碍”之语。",
+
+        "砍头不要紧，只要主义真。杀了夏明翰，还有后来人！",
+
+        "大雪压青松，青松挺且直。要知松高洁，待到雪化时。",
+
+        "志不强者智不达，言不信者行不果。",
+
+        "路漫漫其修远兮，吾将上下而求索。",
+
+        "愿中国青年都摆脱冷气，只是向上走，不必听自暴自弃者流的话。",
+
+        "苟利国家生死以，岂因祸福避趋之。",
+
+        "天下兴亡，匹夫有责。",
+
+        "试看将来的环球，必是赤旗的世界！",
+
+        "头可断，肢可折，革命精神不可灭。"
+
+    ];
+
+
+
+    // 【修改点：纯内存管理的防连号洗牌器，摒弃 localStorage 防止死锁】
+
+    class QuoteManager {
+
+        constructor(quotesArray) {
+
+            this.quotes = quotesArray;
+
+            this.pool = [];
+
+            this.lastQuote = null; // 记录上一句，防止洗牌后第一句就撞车
+
+            this.replenish();
+
+        }
+
+
+
+        replenish() {
+
+            let temp = [...this.quotes];
+
+            // Fisher-Yates 洗牌
+
+            for (let i = temp.length - 1; i > 0; i--) {
+
+                const j = Math.floor(Math.random() * (i + 1));
+
+                [temp[i], temp[j]] = [temp[j], temp[i]];
+
+            }
+
+            // 防连号机制：如果新牌堆的最后一张（即将被弹出的第一张）和上次抽的一样，就跟第一张换个位置
+
+            if (this.lastQuote && temp[temp.length - 1] === this.lastQuote) {
+
+                [temp[temp.length - 1], temp[0]] = [temp[0], temp[temp.length - 1]];
+
+            }
+
+            this.pool = temp;
+
+        }
+
+
+
+        getQuote() {
+
+            if (this.pool.length === 0) {
+
+                this.replenish(); 
+
+            }
+
+            const q = this.pool.pop();
+
+            this.lastQuote = q;
+
+            return q;
+
+        }
+
+    }
+
+
+
+    const quoteManager = new QuoteManager(REVOLUTIONARY_QUOTES);
+
+
+
+    const CONFIG = {
+
+        image: 'xiwang.png', 
+
+        audio: 'music/4_xiwang.mp3', 
+
+        particleCount: 150000, 
+
+        bgStarCount: 50000,
+
+        collectableStarCount: 12, 
+
+    };
+
+
+
+    let scene, camera, renderer, composer, particleSystem;
+
+    let sparksSystem, sparksArray = []; 
+
+    let bgStarSystem; 
+
+    let raycaster, mouse; 
+
+    let isActive = false;
+
+    let progress = 0;
+
+    const audio = new Audio(CONFIG.audio);
+
+    audio.loop = true;
+
+
+
+    // 收集历史记录仅作UI展示使用，保留 localStorage
+
+    let collectedStarsData = JSON.parse(localStorage.getItem('xiwang_collected_stars')) || [];
+
+
+
+    let targetPos = new Float32Array(CONFIG.particleCount * 3);
+
+    let targetCol = new Float32Array(CONFIG.particleCount * 3);
+
+    let validParticles = 0; 
+
+
+
+    function createSparkTexture() {
+
+        const canvas = document.createElement('canvas');
+
+        canvas.width = 64; canvas.height = 64;
+
+        const ctx = canvas.getContext('2d');
+
+        
+
+        ctx.beginPath();
+
+        ctx.moveTo(32, 0); ctx.lineTo(32, 64);
+
+        ctx.moveTo(0, 32); ctx.lineTo(64, 32);
+
+        ctx.lineWidth = 4;
+
+        ctx.strokeStyle = '#ffffff'; 
+
+        ctx.stroke();
+
+
+
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+
+        grad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = grad;
+
+        ctx.fillRect(0, 0, 64, 64);
+
+
+
+        const texture = new THREE.Texture(canvas);
+
+        texture.needsUpdate = true;
+
+        return texture;
+
+    }
+
+
+
+    function init() {
+
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 8000);
+
+        camera.position.z = 800; 
+
+
+
+        renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        document.getElementById('webgl-container').appendChild(renderer.domElement);
+
+
+
+        raycaster = new THREE.Raycaster();
+
+        raycaster.params.Points.threshold = 30; // 触控/点击判定的宽容度
+
+        mouse = new THREE.Vector2();
+
+
+
+        const renderPass = new THREE.RenderPass(scene, camera);
+
+        const afterimagePass = new THREE.AfterimagePass();
+
+        afterimagePass.uniforms['damp'].value = 0.88; 
+
+        
+
+        const bloomPass = new THREE.UnrealBloomPass(
+
+            new THREE.Vector2(window.innerWidth, window.innerHeight), 2.2, 0.8, 0.05
+
+        );
+
+
+
+        composer = new THREE.EffectComposer(renderer);
+
+        composer.addPass(renderPass);
+
+        composer.addPass(afterimagePass);
+
+        composer.addPass(bloomPass);
+
+
+
+        const canvas = document.createElement('canvas');
+
+        canvas.width = 32; canvas.height = 32;
+
+        const ctx = canvas.getContext('2d');
+
+        const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+
+        grad.addColorStop(0.4, 'rgba(255,255,255,0.8)');
+
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = grad;
+
+        ctx.fillRect(0, 0, 32, 32);
+
+        const texture = new THREE.Texture(canvas);
+
+        texture.needsUpdate = true;
+
+
+
+        const bgGeometry = new THREE.BufferGeometry();
+
+        const bgPos = new Float32Array(CONFIG.bgStarCount * 3);
+
+        const bgCol = new Float32Array(CONFIG.bgStarCount * 3);
+
+
+
+        for (let i = 0; i < CONFIG.bgStarCount; i++) {
+
+            bgPos[i * 3] = (Math.random() - 0.5) * 5000;
+
+            bgPos[i * 3 + 1] = (Math.random() - 0.5) * 5000;
+
+            bgPos[i * 3 + 2] = (Math.random() - 0.5) * 1000 - 1500; 
+
+
+
+            const brightness = Math.random() * 0.2 + 0.05;
+
+            bgCol[i * 3] = brightness + 0.05; 
+
+            bgCol[i * 3 + 1] = brightness + 0.03; 
+
+            bgCol[i * 3 + 2] = brightness; 
+
+        }
+
+        bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPos, 3));
+
+        bgGeometry.setAttribute('color', new THREE.BufferAttribute(bgCol, 3));
+
+
+
+        const bgMaterial = new THREE.PointsMaterial({
+
+            size: 1.5, map: texture, vertexColors: true,
+
+            blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
+
+        });
+
+        bgStarSystem = new THREE.Points(bgGeometry, bgMaterial);
+
+        scene.add(bgStarSystem);
+
+
+
+        const geometry = new THREE.BufferGeometry();
+
+        const posArray = new Float32Array(CONFIG.particleCount * 3);
+
+        const colArray = new Float32Array(CONFIG.particleCount * 3);
+
+
+
+        for(let i=0; i<CONFIG.particleCount; i++) {
+
+            posArray[i*3] = (Math.random()-0.5) * 3000;
+
+            posArray[i*3+1] = (Math.random()-0.5) * 3000;
+
+            posArray[i*3+2] = (Math.random()-0.5) * 2000;
+
+            colArray[i*3] = 0.2; colArray[i*3+1] = 0.16; colArray[i*3+2] = 0.04; 
+
+        }
+
+
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        geometry.setAttribute('color', new THREE.BufferAttribute(colArray, 3));
+
+
+
+        const material = new THREE.PointsMaterial({
+
+            size: 2.0, map: texture, vertexColors: true,
+
+            blending: THREE.AdditiveBlending, transparent: true,
+
+            depthWrite: false, opacity: 0.95
+
+        });
+
+
+
+        particleSystem = new THREE.Points(geometry, material);
+
+        scene.add(particleSystem);
+
+
+
+        const sparksGeometry = new THREE.BufferGeometry();
+
+        const sparksPosArray = new Float32Array(CONFIG.collectableStarCount * 3);
+
+        const sparksColArray = new Float32Array(CONFIG.collectableStarCount * 3);
+
+
+
+        for (let i = 0; i < CONFIG.collectableStarCount; i++) {
+
+            const spark = {
+
+                x: (Math.random() - 0.5) * 1200, y: (Math.random() - 0.5) * 1000,
+
+                z: (Math.random() - 0.5) * 400 + 200, 
+
+                vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.0,
+
+                collected: false, collectionStartTime: 0
+
+            };
+
+            sparksArray.push(spark);
+
+
+
+            sparksPosArray[i*3] = spark.x; sparksPosArray[i*3+1] = spark.y; sparksPosArray[i*3+2] = spark.z;
+
+            sparksColArray[i*3] = 1.0; sparksColArray[i*3+1] = 0.8; sparksColArray[i*3+2] = 0.2; 
+
+        }
+
+
+
+        sparksGeometry.setAttribute('position', new THREE.BufferAttribute(sparksPosArray, 3));
+
+        sparksGeometry.setAttribute('color', new THREE.BufferAttribute(sparksColArray, 3));
+
+
+
+        const sparksMaterial = new THREE.PointsMaterial({
+
+            size: 32, map: createSparkTexture(), vertexColors: true,
+
+            blending: THREE.AdditiveBlending, transparent: true,
+
+            depthWrite: false, opacity: 0.9
+
+        });
+
+
+
+        sparksSystem = new THREE.Points(sparksGeometry, sparksMaterial);
+
+        scene.add(sparksSystem);
+
+
+
+        const loader = new THREE.ImageLoader();
+
+        loader.load(CONFIG.image, (img) => {
+
+            const imgAspect = img.width / img.height;
+
+            const cols = Math.floor(Math.sqrt(CONFIG.particleCount * imgAspect));
+
+            const rows = Math.floor(CONFIG.particleCount / cols);
+
+            validParticles = cols * rows;
+
+
+
+            const tempCanvas = document.createElement('canvas');
+
+            const tempCtx = tempCanvas.getContext('2d');
+
+            tempCanvas.width = cols; tempCanvas.height = rows;
+
+            tempCtx.drawImage(img, 0, 0, cols, rows);
+
+            const data = tempCtx.getImageData(0, 0, cols, rows).data;
+
+
+
+            const worldWidth = window.innerWidth > 768 ? 1400 : 800; // 移动端减小跨度
+
+            const worldHeight = worldWidth / imgAspect;
+
+
+
+            for (let i = 0; i < validParticles; i++) {
+
+                const r = data[i*4], g = data[i*4+1], b = data[i*4+2];
+
+                const px = i % cols, py = Math.floor(i / cols);
+
+
+
+                targetPos[i*3] = (px / cols - 0.5) * worldWidth;
+
+                targetPos[i*3+1] = -(py / rows - 0.5) * worldHeight;
+
+                targetPos[i*3+2] = (Math.random()-0.5) * 10; 
+
+
+
+                let luma = (r * 0.299 + g * 0.587 + b * 0.114) / 255.0;
+
+                luma = Math.pow(luma, 0.65); 
+
+
+
+                targetCol[i*3] = Math.min(1.0, luma * 3.8); 
+
+                targetCol[i*3+1] = Math.min(1.0, luma * 2.8); 
+
+                targetCol[i*3+2] = Math.min(1.0, luma * 0.4); 
+
+            }
+
+        });
+
+
+
+        updateRepositoryUI();
+
+        animate();
+
+
+
+        window.addEventListener('click', onDocumentClick, false);
+
+        window.addEventListener('touchstart', onDocumentTouchStart, {passive: false});
+
+        window.addEventListener('resize', onWindowResize, false);
+
+    }
+
+
+
+    function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        composer.setSize(window.innerWidth, window.innerHeight);
+
+    }
+
+
+
+    // 【修改点：修复移动端 touch 事件读取坐标报错的问题】
+
+    function onDocumentTouchStart(event) {
+
+        if (!isActive) return;
+
+        const touch = event.touches[0];
+
+        collectSparkCheck({ clientX: touch.clientX, clientY: touch.clientY });
+
+    }
+
+
+
+    function onDocumentClick(event) {
+
+        if (!isActive) return;
+
+        collectSparkCheck(event);
+
+    }
+
+
+
+    function collectSparkCheck(eventObj) {
+
+        mouse.x = (eventObj.clientX / window.innerWidth) * 2 - 1;
+
+        mouse.y = -(eventObj.clientY / window.innerHeight) * 2 + 1;
+
+
+
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersects = raycaster.intersectObject(sparksSystem);
+
+
+
+        if (intersects.length > 0) {
+
+            const intersectedIndex = intersects[0].index;
+
+            const spark = sparksArray[intersectedIndex];
+
+
+
+            if (!spark.collected) {
+
+                spark.collected = true; 
+
+                spark.collectionStartTime = Date.now(); 
+
+                processCollectionSuccess(); 
+
+            }
+
+        }
+
+    }
+
+
+
+    function processCollectionSuccess() {
+
+        showQuotePopup();
+
+        const timeStr = formatCurrentTime();
+
+        collectedStarsData.push({ time: timeStr });
+
+        
+
+        // 限制本地存储条数，防止手机内存占用过大（保留最新20条）
+
+        if(collectedStarsData.length > 20) collectedStarsData.shift();
+
+        localStorage.setItem('xiwang_collected_stars', JSON.stringify(collectedStarsData));
+
+        
+
+        updateRepositoryUI();
+
+    }
+
+
+
+    function formatCurrentTime() {
+
+        const now = new Date();
+
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+
+        const d = String(now.getDate()).padStart(2, '0');
+
+        const h = String(now.getHours()).padStart(2, '0');
+
+        const mi = String(now.getMinutes()).padStart(2, '0');
+
+        return m + "-" + d + " " + h + ":" + mi;
+
+    }
+
+
+
+    function updateRepositoryUI() {
+
+        const countSpan = document.getElementById('star-count');
+
+        const logDiv = document.getElementById('collection-log');
+
+        
+
+        countSpan.innerText = collectedStarsData.length;
+
+        logDiv.innerHTML = '';
+
+        
+
+        for (let i = collectedStarsData.length - 1; i >= 0; i--) {
+
+            const entry = collectedStarsData[i];
+
+            const logEntry = document.createElement('div');
+
+            logEntry.className = 'log-entry';
+
+            logEntry.innerHTML = '<span class="spark-icon">✨</span>入库<span class="log-time">' + entry.time + '</span>';
+
+            logDiv.appendChild(logEntry);
+
+        }
+
+    }
+
+
+
+    let popupTimeout;
+
+    function showQuotePopup() {
+
+        const popup = document.getElementById('quote-popup');
+
+        const textDiv = document.getElementById('quote-text');
+
+        
+
+        const newQuote = quoteManager.getQuote();
+
+
+
+        textDiv.innerText = newQuote;
+
+        popup.classList.add('visible');
+
+
+
+        clearTimeout(popupTimeout);
+
+        popupTimeout = setTimeout(() => {
+
+            popup.classList.remove('visible');
+
+        }, 3000);
+
+    }
+
+
+
+    function launch() {
+
+        if(isActive) return;
+
+        isActive = true;
+
+        audio.play().catch(e => console.log("音频播放需交互支持"));
+
+        
+
+        document.getElementById('start-overlay').style.opacity = '0';
+
+        setTimeout(() => {
+
+            document.getElementById('start-overlay').style.display = 'none';
+
+            document.getElementById('state-display').style.opacity = '1';
+
+            document.getElementById('description-display').style.opacity = '1';
+
+            
+
+            document.getElementById('star-repository').classList.add('visible');
+
+        }, 1500);
+
+    }
+
+
+
+    function animate() {
+
+        requestAnimationFrame(animate);
+
+        const time = Date.now() * 0.001;
+
+
+
+        if (isActive && progress < 1.0) progress += 0.012;
+
+
+
+        const posAttr = particleSystem.geometry.attributes.position;
+
+        const colAttr = particleSystem.geometry.attributes.color;
+
+
+
+        for (let i = 0; i < CONFIG.particleCount; i++) {
+
+            const i3 = i * 3;
+
+            if (isActive && i < validParticles) {
+
+                posAttr.array[i3] += (targetPos[i3] - posAttr.array[i3]) * 0.07;
+
+                posAttr.array[i3+1] += (targetPos[i3+1] - posAttr.array[i3+1]) * 0.07;
+
+                
+
+                const waveX = Math.sin(targetPos[i3] * 0.004 + time * 1.5) * 10.0;
+
+                const waveY = Math.cos(targetPos[i3+1] * 0.004 + time * 1.0) * 8.0;
+
+                const targetZ = targetPos[i3+2] + waveX + waveY;
+
+                posAttr.array[i3+2] += (targetZ - posAttr.array[i3+2]) * 0.06;
+
+                
+
+                colAttr.array[i3] += (targetCol[i3] - colAttr.array[i3]) * 0.06;
+
+                colAttr.array[i3+1] += (targetCol[i3+1] - colAttr.array[i3+1]) * 0.06;
+
+                colAttr.array[i3+2] += (targetCol[i3+2] - colAttr.array[i3+2]) * 0.06;
+
+
+
+            } else {
+
+                posAttr.array[i3] += Math.sin(time * 0.5 + i) * 0.5;
+
+            }
+
+        }
+
+        posAttr.needsUpdate = true;
+
+        colAttr.needsUpdate = true;
+
+
+
+        const bgPosAttr = bgStarSystem.geometry.attributes.position;
+
+        for (let i = 0; i < CONFIG.bgStarCount; i++) {
+
+            bgPosAttr.array[i*3+2] += 0.5;
+
+            if (bgPosAttr.array[i*3+2] > 500) {
+
+                bgPosAttr.array[i*3+2] = -2000;
+
+            }
+
+        }
+
+        bgPosAttr.needsUpdate = true;
+
+
+
+        const sparksPosAttr = sparksSystem.geometry.attributes.position;
+
+        const sparksColAttr = sparksSystem.geometry.attributes.color;
+
+        const now = Date.now();
+
+
+
+        for (let i = 0; i < CONFIG.collectableStarCount; i++) {
+
+            const i3 = i * 3;
+
+            const spark = sparksArray[i];
+
+
+
+            if (!spark.collected) {
+
+                spark.x += spark.vx;
+
+                spark.y += spark.vy;
+
+
+
+                // 减小手机端星星乱飞的范围，防止飞出屏幕外很难点
+
+                const edgeX = window.innerWidth > 768 ? 600 : 350;
+
+                if (Math.abs(spark.x) > edgeX) spark.vx *= -1;
+
+                if (Math.abs(spark.y) > 500) spark.vy *= -1;
+
+
+
+                const twinkle = 0.8 + 0.3 * Math.sin(time * 3 + i);
+
+                sparksColAttr.array[i3] = twinkle * 1.0; 
+
+                sparksColAttr.array[i3+1] = twinkle * 0.8; 
+
+                sparksColAttr.array[i3+2] = twinkle * 0.2; 
+
+
+
+            } else {
+
+                const collectionProgress = (now - spark.collectionStartTime) / 600; 
+
+
+
+                if (collectionProgress < 1.0) {
+
+                    const t = 1.0 - Math.pow(1.0 - collectionProgress, 3);
+
+                    spark.x = spark.x * (1.0 - t); 
+
+                    spark.y = spark.y * (1.0 - t);
+
+                    spark.z = spark.z * (1.0 - t); 
+
+
+
+                    sparksColAttr.array[i3] = Math.max(1.0 - t, 0); 
+
+                    sparksColAttr.array[i3+1] = Math.max(1.0 - t, 0) * 0.8;
+
+                    sparksColAttr.array[i3+2] = Math.max(1.0 - t, 0) * 0.2;
+
+                } else {
+
+                    spark.collected = false;
+
+                    setTimeout(() => {
+
+                        const edgeX = window.innerWidth > 768 ? 600 : 300;
+
+                        spark.x = (Math.random() - 0.5) * edgeX * 2;
+
+                        spark.y = (Math.random() - 0.5) * 1000;
+
+                        spark.z = (Math.random() - 0.5) * 400 + 200;
+
+                        spark.vx = (Math.random() - 0.5) * 1.5;
+
+                        spark.vy = (Math.random() - 0.5) * 1.0;
+
+                    }, 2000 + Math.random() * 3000);
+
+                }
+
+            }
+
+
+
+            sparksPosAttr.array[i3] = spark.x;
+
+            sparksPosAttr.array[i3+1] = spark.y;
+
+            sparksPosAttr.array[i3+2] = spark.z;
+
+        }
+
+        sparksPosAttr.needsUpdate = true;
+
+        sparksColAttr.needsUpdate = true;
+
+
+
+        if(isActive) {
+
+           particleSystem.rotation.y = Math.sin(time * 0.1) * 0.03; 
+
+           particleSystem.rotation.x = Math.cos(time * 0.1) * 0.01;
+
+        } else {
+
+           particleSystem.rotation.y += 0.002;
+
+        }
+
+        
+
+        composer.render();
+
+    }
+
+
+
+    window.onload = init;
+
+</script>
+
+</body>
+
+</html>
